@@ -4,6 +4,8 @@ import numpy as np
 from sklearn.svm import SVC
 import joblib
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import GridSearchCV
 
 st.title("IoT Emotion Recognition Web App")
 
@@ -27,16 +29,26 @@ if uploaded_file:
         st.write("Labels sample:")
         st.write(y[:5])
 
-        # Train a model - this happens only once when file is uploaded
-        clf = SVC(kernel='rbf', probability=True)
-        clf.fit(X, y)
+        # Balance check
+        unique, counts = np.unique(y, return_counts=True)
+        st.write("Label distribution:", dict(zip(unique, counts)))
 
-        # Save to disk for later use or you can directly predict here
-        joblib.dump(clf, 'svm_emotion_model.pkl')
-        st.success("Model trained and saved successfully!")
+        # Standardize features
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        # Grid search for best SVM (tune C and gamma for RBF)
+        param_grid = {'C': [0.1, 1, 10], 'gamma': [0.01, 0.1, 1], 'kernel': ['rbf']}
+        grid = GridSearchCV(SVC(probability=True, class_weight='balanced'), param_grid, cv=5)
+        grid.fit(X_scaled, y)
+        clf = grid.best_estimator_
+        st.success(f"Model trained and saved successfully! Best params: {grid.best_params_}")
+
+        # Save both scaler and model for future use
+        joblib.dump({'scaler': scaler, 'model': clf}, 'svm_emotion_model.pkl')
 
         # Predict on uploaded features itself (optional)
-        predictions = clf.predict(X)
+        predictions = clf.predict(X_scaled)
         st.write("Sample predictions on uploaded data:")
         st.write(predictions[:5])
     else:
@@ -46,14 +58,13 @@ if uploaded_file:
 test_file = st.file_uploader("Upload test features CSV for prediction", type=["csv"])
 if test_file:
     test_X = np.array(pd.read_csv(test_file, header=None))
-    clf = None
-    # Load your pretrained model if it exists
     try:
-        clf = joblib.load('svm_emotion_model.pkl')
-    except:
-        st.error("Model not trained yet. Upload training .mat file first.")
-    if clf:
-        pred = clf.predict(test_X)
+        data = joblib.load('svm_emotion_model.pkl')
+        scaler = data['scaler']
+        clf = data['model']
+        test_X_scaled = scaler.transform(test_X)
+        pred = clf.predict(test_X_scaled)
         st.write("Predictions for test features:")
         st.write(pred)
-
+    except Exception as e:
+        st.error(f"Prediction failed: {e}")
