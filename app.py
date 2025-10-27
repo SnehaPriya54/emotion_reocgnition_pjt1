@@ -1,65 +1,57 @@
 import streamlit as st
 import scipy.io
 import numpy as np
-
 from sklearn.svm import SVC
 import joblib
 
 st.title("IoT Emotion Recognition Web App")
 
-uploaded_file = st.file_uploader("Upload MATLAB .mat file", type=["mat"])
+uploaded_file = st.file_uploader("Upload MATLAB .mat file containing features and labels", type=["mat"])
 if uploaded_file:
-    st.success("File Uploaded Successfully")
+    # Save uploaded file locally
     with open("uploaded_mat_file.mat", "wb") as f:
         f.write(uploaded_file.getbuffer())
 
     matdata = scipy.io.loadmat("uploaded_mat_file.mat")
-
-    # Step 1: List all top-level keys
     st.subheader("Available Fields in .mat File")
     st.write(list(matdata.keys()))
+    
+    # Load features and labels (ensure your .mat includes both)
+    if 'X' in matdata and 'y' in matdata:
+        X = matdata['X']
+        y = np.array([str(lbl[0]) for lbl in matdata['y']])  # Convert MATLAB cell array string labels
+        
+        st.write("Feature sample:")
+        st.write(X[:5])
+        st.write("Labels sample:")
+        st.write(y[:5])
 
-    # Step 2: Try to get compactStruct, the most likely SVM container
-    compact_struct = matdata.get('compactStruct', None)
-    if compact_struct is not None:
-        st.subheader("Sample of 'compactStruct' Contents")
-        st.write(compact_struct)
-        st.info(
-            "Direct inference with this MATLAB SVM model is not possible in Python.\n"
-            "To perform predictions in Streamlit, you will need to export features/labels from MATLAB and retrain an SVM in Python (e.g., scikit-learn), save as .pkl, and load that for prediction."
-        )
+        # Train a model - this happens only once when file is uploaded
+        clf = SVC(kernel='rbf', probability=True)
+        clf.fit(X, y)
+
+        # Save to disk for later use or you can directly predict here
+        joblib.dump(clf, 'svm_emotion_model.pkl')
+        st.success("Model trained and saved successfully!")
+
+        # Predict on uploaded features itself (optional)
+        predictions = clf.predict(X)
+        st.write("Sample predictions on uploaded data:")
+        st.write(predictions[:5])
     else:
-        st.warning("No 'compactStruct' found. Top-level fields: " + str(list(matdata.keys())))
+        st.error("Uploaded .mat file does not contain both 'X' and 'y' variables.")
 
-    # Step 3: If you have features/labels, visualize them
-    # Example: 
-    # if 'features' in matdata and 'labels' in matdata:
-    #     features = matdata['features']
-    #     labels = matdata['labels']
-    #     st.write("Feature shape:", features.shape)
-    #     st.write("Label shape:", labels.shape)
-    #     st.write("First 5 rows:", features[:5], labels[:5])
-
-    # --- For actual ML prediction, see note below ---
-
-st.markdown("""
-**Next steps:**
-- For true prediction, upload CSV/test features and load a scikit-learn model trained in Python.
-- Use the keys above to explore and map what is saved in your .mat file for further migration.
-""")
-
-
-
-
-
-data = scipy.io.loadmat('emotion_features.mat')
-X = data['X']
-y = np.array([str(lbl[0]) for lbl in data['y']])  # if 'y' is saved as a cell array of strings
-
-clf = SVC(kernel='rbf', probability=True)
-clf.fit(X, y)
-joblib.dump(clf, 'svm_emotion_model.pkl')
-
-
-st.write(type(compact_struct))
-st.write("Model loaded, but not displayed.")
+# Optional: If you want to upload test features separately for prediction
+test_file = st.file_uploader("Upload test features CSV for prediction", type=["csv"])
+if test_file:
+    test_X = np.array(pd.read_csv(test_file, header=None))
+    clf = None
+    # Load your pretrained model if it exists
+    try:
+        clf = joblib.load('svm_emotion_model.pkl')
+    except:
+        st.error("Model not trained yet. Upload training .mat file first.")
+    if clf:
+        pred = clf.predict(test_X)
+        st.write("Predictions for test features:")
+        st.write(pred)
