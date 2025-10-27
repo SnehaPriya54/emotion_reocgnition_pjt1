@@ -2,6 +2,9 @@ import streamlit as st
 import scipy.io
 import numpy as np
 
+from sklearn.svm import SVC
+import joblib
+
 st.title("IoT Emotion Recognition Web App")
 
 uploaded_file = st.file_uploader("Upload MATLAB .mat file", type=["mat"])
@@ -44,4 +47,16 @@ st.markdown("""
 - For true prediction, upload CSV/test features and load a scikit-learn model trained in Python.
 - Use the keys above to explore and map what is saved in your .mat file for further migration.
 """)
+
+
+
+
+
+data = scipy.io.loadmat('emotion_features.mat')
+X = data['X']
+y = np.array([str(lbl[0]) for lbl in data['y']])  # if 'y' is saved as a cell array of strings
+
+clf = SVC(kernel='rbf', probability=True)
+clf.fit(X, y)
+joblib.dump(clf, 'svm_emotion_model.pkl')
 
