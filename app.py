@@ -1,23 +1,24 @@
 import streamlit as st
 import scipy.io
 import numpy as np
-from sklearn import svm
 
-# Load .mat file (verify its contents!)
-mat_data = scipy.io.loadmat('svmMdl.mat')
-# Inspect contents
-st.write(mat_data)
+# Basic helper for .mat model loading.
+def load_mat_file(filename):
+    data = scipy.io.loadmat(filename)
+    st.write(data)  # show loaded data for debugging
 
-# If retraining SVM in Python, use scikit-learn
-# Otherwise, extract parameters and use numpy-based inference
+    # IN PRODUCTION: parse the model variables
+    # model = data.get('model_variable_name')
+    # output = ... # add your SVM inference code here
 
-def predict_emotion(input_features):
-    # Example: clf.predict(input_features) for scikit-learn model
-    return predicted_emotion
-
+# Page title
 st.title("IoT Emotion Recognition Web App")
-uploaded_file = st.file_uploader("Upload sensor data (CSV)", type=["csv"])
-if uploaded_file:
-    input_features = ... # parse file
-    emotion_output = predict_emotion(input_features)
-    st.write(f"Predicted Emotion: {emotion_output}")
+
+uploaded_file = st.file_uploader("Upload MATLAB .mat file", type=["mat"])
+if uploaded_file is not None:
+    # Save to disk then load with scipy.io
+    with open("uploaded_mat_file.mat", "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    load_mat_file("uploaded_mat_file.mat")
+
+
