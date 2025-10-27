@@ -2,23 +2,46 @@ import streamlit as st
 import scipy.io
 import numpy as np
 
-# Basic helper for .mat model loading.
-def load_mat_file(filename):
-    data = scipy.io.loadmat(filename)
-    st.write(data)  # show loaded data for debugging
-
-    # IN PRODUCTION: parse the model variables
-    # model = data.get('model_variable_name')
-    # output = ... # add your SVM inference code here
-
-# Page title
 st.title("IoT Emotion Recognition Web App")
 
 uploaded_file = st.file_uploader("Upload MATLAB .mat file", type=["mat"])
-if uploaded_file is not None:
-    # Save to disk then load with scipy.io
+if uploaded_file:
+    st.success("File Uploaded Successfully")
     with open("uploaded_mat_file.mat", "wb") as f:
         f.write(uploaded_file.getbuffer())
-    load_mat_file("uploaded_mat_file.mat")
 
+    matdata = scipy.io.loadmat("uploaded_mat_file.mat")
+
+    # Step 1: List all top-level keys
+    st.subheader("Available Fields in .mat File")
+    st.write(list(matdata.keys()))
+
+    # Step 2: Try to get compactStruct, the most likely SVM container
+    compact_struct = matdata.get('compactStruct', None)
+    if compact_struct is not None:
+        st.subheader("Sample of 'compactStruct' Contents")
+        st.write(compact_struct)
+        st.info(
+            "Direct inference with this MATLAB SVM model is not possible in Python.\n"
+            "To perform predictions in Streamlit, you will need to export features/labels from MATLAB and retrain an SVM in Python (e.g., scikit-learn), save as .pkl, and load that for prediction."
+        )
+    else:
+        st.warning("No 'compactStruct' found. Top-level fields: " + str(list(matdata.keys())))
+
+    # Step 3: If you have features/labels, visualize them
+    # Example: 
+    # if 'features' in matdata and 'labels' in matdata:
+    #     features = matdata['features']
+    #     labels = matdata['labels']
+    #     st.write("Feature shape:", features.shape)
+    #     st.write("Label shape:", labels.shape)
+    #     st.write("First 5 rows:", features[:5], labels[:5])
+
+    # --- For actual ML prediction, see note below ---
+
+st.markdown("""
+**Next steps:**
+- For true prediction, upload CSV/test features and load a scikit-learn model trained in Python.
+- Use the keys above to explore and map what is saved in your .mat file for further migration.
+""")
 
