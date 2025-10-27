@@ -60,3 +60,6 @@ clf = SVC(kernel='rbf', probability=True)
 clf.fit(X, y)
 joblib.dump(clf, 'svm_emotion_model.pkl')
 
+
+st.write(type(compact_struct))
+st.write("Model loaded, but not displayed.")
