@@ -3,6 +3,7 @@ import scipy.io
 import numpy as np
 from sklearn.svm import SVC
 import joblib
+import pandas as pd
 
 st.title("IoT Emotion Recognition Web App")
 
@@ -55,3 +56,4 @@ if test_file:
         pred = clf.predict(test_X)
         st.write("Predictions for test features:")
         st.write(pred)
+
